@@ -50,7 +50,7 @@ jobs:
       - name: Migrate database
         run: npx prisma migrate deploy
       - name: Run tests
-        run: npm test -- --coverage
+        run: npm test
 
   build:
     runs-on: ubuntu-latest
