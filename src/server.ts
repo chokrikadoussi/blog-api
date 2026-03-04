@@ -31,7 +31,7 @@ prisma
       console.log(`Server is running on port ${PORT}`);
     });
   })
-  .catch((error) => {
+  .catch((error: unknown) => {
     console.error("Database connection error:", error);
     process.exit(1); // Exit the process if the database connection fails
   });
