@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  AUTHOR
+  MODERATOR
+  ADMIN
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  DELETED
+}
+
+model Users {
+  id              Int      @id @default(autoincrement())
+  email           String   @unique
+  password_hash   String
+  role            Role     @default(AUTHOR)
+  createdAt       DateTime @default(now())
+
+  articles        Articles[]
+  comments        Comments[]
+  likes           Likes[]
+}
+
+model Articles {
+  id        Int      @id @default(autoincrement())
+  title     String
+  slug      String   @unique
+  content   String
+  status    ArticleStatus @default(DRAFT)
+  authorId  Int
+  author    Users    @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comments   Comments[]
+  articleTags ArticleTags[]
+  likes Likes[]
+}
+
+model Comments {
+  id        Int      @id @default(autoincrement())
+  content   String
+  articleId Int
+  article   Articles @relation(fields: [articleId], references: [id])
+  authorId Int
+  author   Users    @relation(fields: [authorId], references: [id])
+  parentId Int?
+  parent   Comments? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comments[] @relation("CommentReplies")
+  createdAt DateTime @default(now())
+}
+
+model Tags {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+
+  articleTags ArticleTags[]
+}
+
+model ArticleTags {
+  articleId Int
+  tagId     Int
+  article   Articles @relation(fields: [articleId], references: [id])
+  tag       Tags     @relation(fields: [tagId], references: [id])
+  @@id([articleId, tagId])
+}
+
+model Likes {
+  userId   Int
+  articleId Int
+  user     Users    @relation(fields: [userId], references: [id])
+  article  Articles @relation(fields: [articleId], references: [id])
+  @@id([userId, articleId])
+}

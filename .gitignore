@@ -5,3 +5,4 @@ coverage/
 # Environment
 .env
 .env.local
+/generated/prisma
