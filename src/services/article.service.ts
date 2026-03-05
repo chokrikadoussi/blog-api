@@ -56,7 +56,7 @@ const createArticle = async (title: string, content: string, userId: number, sta
     },
   });
 
-  return article;
+  return { ...article, tags: article.articleTags.map((at) => at.tag), articleTags: undefined };
 };
 
 export { createArticle };
