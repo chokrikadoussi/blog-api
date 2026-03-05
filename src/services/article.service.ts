@@ -1,3 +1,4 @@
+import { Prisma } from "../generated/prisma/client.js";
 import type { ArticleStatus } from "../generated/prisma/enums.js";
 import { prisma } from "../lib/prisma.js";
 import { slugify } from "../utils/slugify.js";
@@ -59,4 +60,52 @@ const createArticle = async (title: string, content: string, userId: number, sta
   return { ...article, tags: article.articleTags.map((at) => at.tag), articleTags: undefined };
 };
 
-export { createArticle };
+const getArticles = async (
+  page: number,
+  limit: number,
+  author?: number,
+  searchTerm?: string,
+  userId?: number | undefined,
+) => {
+  const conditions: Prisma.ArticlesWhereInput[] = [];
+
+  if (userId) {
+    conditions.push({ OR: [{ status: "PUBLISHED" }, { status: "DRAFT", authorId: userId }] });
+  } else {
+    conditions.push({ status: "PUBLISHED" });
+  }
+  if (author) conditions.push({ authorId: author });
+  if (searchTerm) {
+    conditions.push({
+      OR: [
+        { title: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
+        { content: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
+      ],
+    });
+  }
+
+  const where: Prisma.ArticlesWhereInput = { AND: conditions };
+
+  const [articles, count] = await Promise.all([
+    prisma.articles.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        status: true,
+        author: { select: { id: true, email: true } },
+        createdAt: true,
+        _count: { select: { comments: true, likes: true } },
+      },
+    }),
+    prisma.articles.count({ where }),
+  ]);
+
+  return { data: articles, pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } };
+};
+
+export { createArticle, getArticles };
