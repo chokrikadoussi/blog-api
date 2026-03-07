@@ -13,6 +13,7 @@ import {
   canEditArticle,
   deleteArticle,
 } from "../services/article.service.js";
+import { createComment } from "../services/comment.service.js";
 import { BadRequestError } from "../utils/errors.js";
 
 const router = Router();
@@ -35,6 +36,11 @@ const updateArticleSchema = z.object({
   title: z.string().min(3).max(200).optional(),
   content: z.string().min(1).optional(),
   status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
+});
+
+const createCommentSchema = z.object({
+  content: z.string().min(1).max(2000),
+  parentId: z.coerce.number().int().positive().optional(),
 });
 
 router.post(
@@ -150,6 +156,37 @@ router.delete(
       await canEditArticle(articleId, req.user!);
       await deleteArticle(articleId);
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  "/:id/comments",
+  authenticate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    const articleId = parseInt(req.params.id as string, 10);
+    if (isNaN(articleId) || articleId <= 0) {
+      return next(new BadRequestError("Invalid article ID"));
+    }
+
+    const validation = createCommentSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const { content, parentId } = validation.data;
+
+    try {
+      const comment = await createComment(
+        articleId,
+        req.user!.id,
+        content,
+        parentId,
+      );
+      res.status(201).json(comment);
     } catch (error) {
       next(error);
     }
