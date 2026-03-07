@@ -1,11 +1,12 @@
 import { Prisma } from "../generated/prisma/client.js";
-import type { ArticleStatus } from "../generated/prisma/enums.js";
+import type { ArticleStatus, Role } from "../generated/prisma/enums.js";
 import { prisma } from "../lib/prisma.js";
+import { ForbiddenError, NotFoundError } from "../utils/errors.js";
 import { slugify } from "../utils/slugify.js";
 
-const generateUniqueSlug = async (baseSlug: string): Promise<string> => {
+const generateUniqueSlug = async (baseSlug: string, excludeId?: number): Promise<string> => {
   const existing = await prisma.articles.findMany({
-    where: { slug: { startsWith: baseSlug } },
+    where: { slug: { startsWith: baseSlug }, ...(excludeId !== undefined ? { id: { not: excludeId } } : {}) },
     select: { slug: true },
   });
 
@@ -108,4 +109,49 @@ const getArticles = async (
   return { data: articles, pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } };
 };
 
-export { createArticle, getArticles };
+const canEditArticle = async (articleId: number, user: { id: number; role: Role }) => {
+  const article = await prisma.articles.findUnique({
+    where: { id: articleId },
+    select: { authorId: true, status: true },
+  });
+
+  if (!article || article.status === "DELETED") {
+    throw new NotFoundError("Article not found");
+  }
+
+  if (user.role === "ADMIN" || user.role === "MODERATOR") return true;
+
+  if (article.authorId === user.id) {
+    return true;
+  }
+
+  throw new ForbiddenError("You do not have permission to edit this article");
+};
+
+const updateArticle = async (id: number, title?: string, content?: string, status?: ArticleStatus) => {
+  const data: Prisma.ArticlesUpdateInput = {
+    ...(status !== undefined ? { status } : {}),
+    ...(title !== undefined ? { title, slug: await generateUniqueSlug(slugify(title), id) } : {}),
+    ...(content !== undefined ? { content } : {}),
+  };
+
+  const updatedArticle = await prisma.articles.update({
+    where: { id },
+    data,
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      content: true,
+      status: true,
+      author: { select: { id: true, email: true } },
+      articleTags: { select: { tag: { select: { name: true, slug: true } } } },
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  return { ...updatedArticle, tags: updatedArticle.articleTags.map((at) => at.tag), articleTags: undefined };
+};
+
+export { createArticle, getArticles, updateArticle, canEditArticle };
