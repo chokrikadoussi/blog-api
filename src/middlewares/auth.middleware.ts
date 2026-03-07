@@ -35,7 +35,7 @@ const authenticateOptional = (req: Request, res: Response, next: NextFunction) =
   try {
     const decoded = jwt.verify(token, config.jwtSecret);
     req.user = decoded as { id: number; role: Role };
-  } catch (_error) {
+  } catch {
     // Ignore token errors for optional authentication
   } finally {
     next();
