@@ -109,6 +109,34 @@ const getArticles = async (
   return { data: articles, pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } };
 };
 
+const getArticleById = async (id: number, userId?: number) => {
+  const article = await prisma.articles.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      slug: true,
+      status: true,
+      author: { select: { id: true, email: true } },
+      articleTags: { select: { tag: { select: { name: true, slug: true } } } },
+      createdAt: true,
+      updatedAt: true,
+      _count: { select: { comments: true, likes: true } },
+    },
+  });
+
+  if (!article || article.status === "DELETED") {
+    throw new NotFoundError("Article not found");
+  }
+
+  if (article.status === "DRAFT" && article.author.id !== userId) {
+    throw new NotFoundError("Article not found");
+  }
+
+  return { ...article, tags: article.articleTags.map((at) => at.tag), articleTags: undefined };
+};
+
 const canEditArticle = async (articleId: number, user: { id: number; role: Role }) => {
   const article = await prisma.articles.findUnique({
     where: { id: articleId },
@@ -161,4 +189,4 @@ const deleteArticle = async (id: number) => {
   });
 };
 
-export { createArticle, getArticles, updateArticle, canEditArticle, deleteArticle };
+export { createArticle, getArticles, getArticleById, updateArticle, canEditArticle, deleteArticle };

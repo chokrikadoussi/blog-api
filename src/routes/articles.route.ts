@@ -5,6 +5,7 @@ import { authenticate, authenticateOptional } from "../middlewares/auth.middlewa
 import {
   createArticle,
   getArticles,
+  getArticleById,
   updateArticle,
   canEditArticle,
   deleteArticle,
@@ -63,6 +64,22 @@ router.get("/", authenticateOptional, async (req: Request, res: Response, next: 
   try {
     const articles = await getArticles(page, limit, author, search, userId);
     res.status(200).json(articles);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/:id", authenticateOptional, async (req: Request, res: Response, next: NextFunction) => {
+  const articleId = parseInt(req.params.id as string, 10);
+  if (isNaN(articleId) || articleId <= 0) {
+    return next(new BadRequestError("Invalid article ID"));
+  }
+
+  const userId = req.user?.id;
+
+  try {
+    const article = await getArticleById(articleId, userId);
+    res.status(200).json(article);
   } catch (error) {
     next(error);
   }
