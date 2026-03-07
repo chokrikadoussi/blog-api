@@ -22,6 +22,30 @@ const authenticate = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+const authenticateOptional = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    next();
+    return;
+  }
+
+  const token = authHeader.split(" ")[1] || "";
+
+  try {
+    const decoded = jwt.verify(token, config.jwtSecret);
+    req.user = decoded as { id: number; role: Role };
+  } catch {
+    // Ignore token errors for optional authentication
+  } finally {
+    next();
+  }
+};
+
 const authorize = (...roles: Role[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -36,4 +60,4 @@ const authorize = (...roles: Role[]) => {
   };
 };
 
-export { authenticate, authorize };
+export { authenticate, authenticateOptional, authorize };
