@@ -1,5 +1,6 @@
+import type { Role } from "../generated/prisma/enums.js";
 import { prisma } from "../lib/prisma.js";
-import { BadRequestError } from "../utils/errors.js";
+import { BadRequestError, ForbiddenError, NotFoundError } from "../utils/errors.js";
 import { getArticleById } from "./article.service.js";
 
 const createComment = async (
@@ -88,4 +89,21 @@ const getCommentsForArticle = async (articleId: number, page: number, limit: num
   };
 };
 
-export { createComment, getCommentsForArticle };
+const deleteComment = async (commentId: number, userId: number, role: Role) => {
+  const comment = await prisma.comments.findUnique({
+    where: { id: commentId },
+    select: { id: true, authorId: true },
+  });
+
+  if (!comment) {
+    throw new NotFoundError("Comment not found");
+  }
+
+  if (role === "AUTHOR" && comment.authorId !== userId) {
+    throw new ForbiddenError("You do not have permission to delete this comment");
+  }
+
+  await prisma.comments.delete({ where: { id: commentId } });
+};
+
+export { createComment, getCommentsForArticle, deleteComment };

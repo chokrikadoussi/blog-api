@@ -2,6 +2,7 @@ import express from "express";
 import { prisma } from "./lib/prisma.js";
 import authRouter from "./routes/auth.route.js";
 import articleRouter from "./routes/articles.route.js";
+import commentsRouter from "./routes/comments.route.js";
 import errorHandler from "./middlewares/error.middleware.js";
 const app = express();
 
@@ -23,6 +24,7 @@ app.get("/health", async (_req, res) => {
 
 app.use("/auth", authRouter);
 app.use("/articles", articleRouter);
+app.use("/comments", commentsRouter);
 
 app.use(errorHandler);
 
