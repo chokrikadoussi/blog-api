@@ -4,10 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { ForbiddenError, NotFoundError } from "../utils/errors.js";
 import { slugify } from "../utils/slugify.js";
 
-const generateUniqueSlug = async (
-  baseSlug: string,
-  excludeId?: number,
-): Promise<string> => {
+const generateUniqueSlug = async (baseSlug: string, excludeId?: number): Promise<string> => {
   const existing = await prisma.articles.findMany({
     where: {
       slug: { startsWith: baseSlug },
@@ -169,10 +166,7 @@ const getArticleById = async (id: number, userId?: number) => {
   };
 };
 
-const canEditArticle = async (
-  articleId: number,
-  user: { id: number; role: Role },
-) => {
+const canEditArticle = async (articleId: number, user: { id: number; role: Role }) => {
   const article = await prisma.articles.findUnique({
     where: { id: articleId },
     select: { authorId: true, status: true },
@@ -199,9 +193,7 @@ const updateArticle = async (
 ) => {
   const data: Prisma.ArticlesUpdateInput = {
     ...(status !== undefined ? { status } : {}),
-    ...(title !== undefined
-      ? { title, slug: await generateUniqueSlug(slugify(title), id) }
-      : {}),
+    ...(title !== undefined ? { title, slug: await generateUniqueSlug(slugify(title), id) } : {}),
     ...(content !== undefined ? { content } : {}),
   };
 
@@ -235,11 +227,4 @@ const deleteArticle = async (id: number) => {
   });
 };
 
-export {
-  createArticle,
-  getArticles,
-  getArticleById,
-  updateArticle,
-  canEditArticle,
-  deleteArticle,
-};
+export { createArticle, getArticles, getArticleById, updateArticle, canEditArticle, deleteArticle };

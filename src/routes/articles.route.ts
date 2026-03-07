@@ -1,10 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { Router } from "express";
 import z from "zod";
-import {
-  authenticate,
-  authenticateOptional,
-} from "../middlewares/auth.middleware.js";
+import { authenticate, authenticateOptional } from "../middlewares/auth.middleware.js";
 import {
   createArticle,
   getArticles,
@@ -13,6 +10,7 @@ import {
   canEditArticle,
   deleteArticle,
 } from "../services/article.service.js";
+import { createComment, getCommentsForArticle } from "../services/comment.service.js";
 import { BadRequestError } from "../utils/errors.js";
 
 const router = Router();
@@ -37,54 +35,50 @@ const updateArticleSchema = z.object({
   status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
 });
 
-router.post(
-  "/",
-  authenticate,
-  async (req: Request, res: Response, next: NextFunction) => {
-    const validation = createArticleSchema.safeParse(req.body);
+const createCommentSchema = z.object({
+  content: z.string().min(1).max(2000),
+  parentId: z.coerce.number().int().positive().optional(),
+});
 
-    if (!validation.success) {
-      return res.status(400).json({ error: validation.error });
-    }
+const paginateCommentsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
 
-    try {
-      const { title, content, status, tags } = validation.data;
+router.post("/", authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  const validation = createArticleSchema.safeParse(req.body);
 
-      const article = await createArticle(
-        title,
-        content,
-        req.user!.id,
-        status,
-        tags,
-      );
-      res.status(201).json(article);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+  if (!validation.success) {
+    return res.status(400).json({ error: validation.error });
+  }
 
-router.get(
-  "/",
-  authenticateOptional,
-  async (req: Request, res: Response, next: NextFunction) => {
-    const validation = paginateArticlesSchema.safeParse(req.query);
+  try {
+    const { title, content, status, tags } = validation.data;
 
-    if (!validation.success) {
-      return res.status(400).json({ error: validation.error });
-    }
+    const article = await createArticle(title, content, req.user!.id, status, tags);
+    res.status(201).json(article);
+  } catch (error) {
+    next(error);
+  }
+});
 
-    const { page, limit, author, search } = validation.data;
-    const userId = req.user?.id;
+router.get("/", authenticateOptional, async (req: Request, res: Response, next: NextFunction) => {
+  const validation = paginateArticlesSchema.safeParse(req.query);
 
-    try {
-      const articles = await getArticles(page, limit, author, search, userId);
-      res.status(200).json(articles);
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+  if (!validation.success) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  const { page, limit, author, search } = validation.data;
+  const userId = req.user?.id;
+
+  try {
+    const articles = await getArticles(page, limit, author, search, userId);
+    res.status(200).json(articles);
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get(
   "/:id",
@@ -106,54 +100,90 @@ router.get(
   },
 );
 
-router.patch(
-  "/:id",
+router.patch("/:id", authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  const articleId = parseInt(req.params.id as string, 10);
+  if (isNaN(articleId) || articleId <= 0) {
+    return next(new BadRequestError("Invalid article ID"));
+  }
+  const validation = updateArticleSchema.safeParse(req.body);
+
+  if (!validation.success) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  const { title, content, status } = validation.data;
+
+  try {
+    await canEditArticle(articleId, req.user!);
+    const updatedArticle = await updateArticle(articleId, title, content, status);
+    res.status(200).json(updatedArticle);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/:id", authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  const articleId = parseInt(req.params.id as string, 10);
+  if (isNaN(articleId) || articleId <= 0) {
+    return next(new BadRequestError("Invalid article ID"));
+  }
+
+  try {
+    await canEditArticle(articleId, req.user!);
+    await deleteArticle(articleId);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post(
+  "/:id/comments",
   authenticate,
   async (req: Request, res: Response, next: NextFunction) => {
     const articleId = parseInt(req.params.id as string, 10);
     if (isNaN(articleId) || articleId <= 0) {
       return next(new BadRequestError("Invalid article ID"));
     }
-    const validation = updateArticleSchema.safeParse(req.body);
+
+    const validation = createCommentSchema.safeParse(req.body);
 
     if (!validation.success) {
       return res.status(400).json({ error: validation.error });
     }
 
-    const { title, content, status } = validation.data;
+    const { content, parentId } = validation.data;
 
     try {
-      await canEditArticle(articleId, req.user!);
-      const updatedArticle = await updateArticle(
-        articleId,
-        title,
-        content,
-        status,
-      );
-      res.status(200).json(updatedArticle);
+      const comment = await createComment(articleId, req.user!.id, content, parentId);
+      res.status(201).json(comment);
     } catch (error) {
       next(error);
     }
   },
 );
 
-router.delete(
-  "/:id",
-  authenticate,
-  async (req: Request, res: Response, next: NextFunction) => {
-    const articleId = parseInt(req.params.id as string, 10);
-    if (isNaN(articleId) || articleId <= 0) {
-      return next(new BadRequestError("Invalid article ID"));
-    }
+router.get("/:id/comments", async (req: Request, res: Response, next: NextFunction) => {
+  const articleId = parseInt(req.params.id as string, 10);
+  if (isNaN(articleId) || articleId <= 0) {
+    return next(new BadRequestError("Invalid article ID"));
+  }
 
-    try {
-      await canEditArticle(articleId, req.user!);
-      await deleteArticle(articleId);
-      res.status(204).send();
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+  const validation = paginateCommentsSchema.safeParse(req.query);
+
+  if (!validation.success) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  const { page, limit } = validation.data;
+
+  try {
+    await getArticleById(articleId);
+    const comments = await getCommentsForArticle(articleId, page, limit);
+    res.status(200).json(comments);
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;
