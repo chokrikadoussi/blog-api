@@ -2,7 +2,13 @@ import type { NextFunction, Request, Response } from "express";
 import { Router } from "express";
 import z from "zod";
 import { authenticate, authenticateOptional } from "../middlewares/auth.middleware.js";
-import { createArticle, getArticles, updateArticle, canEditArticle } from "../services/article.service.js";
+import {
+  createArticle,
+  getArticles,
+  updateArticle,
+  canEditArticle,
+  deleteArticle,
+} from "../services/article.service.js";
 import { BadRequestError } from "../utils/errors.js";
 
 const router = Router();
@@ -65,7 +71,7 @@ router.get("/", authenticateOptional, async (req: Request, res: Response, next: 
 router.patch("/:id", authenticate, async (req: Request, res: Response, next: NextFunction) => {
   const articleId = parseInt(req.params.id as string, 10);
   if (isNaN(articleId) || articleId <= 0) {
-    throw new BadRequestError("Invalid article ID");
+    return next(new BadRequestError("Invalid article ID"));
   }
   const validation = updateArticleSchema.safeParse(req.body);
 
@@ -79,6 +85,21 @@ router.patch("/:id", authenticate, async (req: Request, res: Response, next: Nex
     await canEditArticle(articleId, req.user!);
     const updatedArticle = await updateArticle(articleId, title, content, status);
     res.status(200).json(updatedArticle);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/:id", authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  const articleId = parseInt(req.params.id as string, 10);
+  if (isNaN(articleId) || articleId <= 0) {
+    return next(new BadRequestError("Invalid article ID"));
+  }
+
+  try {
+    await canEditArticle(articleId, req.user!);
+    await deleteArticle(articleId);
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

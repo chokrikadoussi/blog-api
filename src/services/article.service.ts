@@ -154,4 +154,11 @@ const updateArticle = async (id: number, title?: string, content?: string, statu
   return { ...updatedArticle, tags: updatedArticle.articleTags.map((at) => at.tag), articleTags: undefined };
 };
 
-export { createArticle, getArticles, updateArticle, canEditArticle };
+const deleteArticle = async (id: number) => {
+  await prisma.articles.update({
+    where: { id },
+    data: { status: "DELETED" },
+  });
+};
+
+export { createArticle, getArticles, updateArticle, canEditArticle, deleteArticle };
