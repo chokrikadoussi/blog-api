@@ -4,9 +4,15 @@ import { prisma } from "../lib/prisma.js";
 import { ForbiddenError, NotFoundError } from "../utils/errors.js";
 import { slugify } from "../utils/slugify.js";
 
-const generateUniqueSlug = async (baseSlug: string, excludeId?: number): Promise<string> => {
+const generateUniqueSlug = async (
+  baseSlug: string,
+  excludeId?: number,
+): Promise<string> => {
   const existing = await prisma.articles.findMany({
-    where: { slug: { startsWith: baseSlug }, ...(excludeId !== undefined ? { id: { not: excludeId } } : {}) },
+    where: {
+      slug: { startsWith: baseSlug },
+      ...(excludeId !== undefined ? { id: { not: excludeId } } : {}),
+    },
     select: { slug: true },
   });
 
@@ -24,7 +30,13 @@ const generateUniqueSlug = async (baseSlug: string, excludeId?: number): Promise
   return `${baseSlug}-${counter}`;
 };
 
-const createArticle = async (title: string, content: string, userId: number, status: ArticleStatus, tags: string[]) => {
+const createArticle = async (
+  title: string,
+  content: string,
+  userId: number,
+  status: ArticleStatus,
+  tags: string[],
+) => {
   const slug = await generateUniqueSlug(slugify(title));
 
   const existingTags =
@@ -58,7 +70,11 @@ const createArticle = async (title: string, content: string, userId: number, sta
     },
   });
 
-  return { ...article, tags: article.articleTags.map((at) => at.tag), articleTags: undefined };
+  return {
+    ...article,
+    tags: article.articleTags.map((at) => at.tag),
+    articleTags: undefined,
+  };
 };
 
 const getArticles = async (
@@ -71,7 +87,9 @@ const getArticles = async (
   const conditions: Prisma.ArticlesWhereInput[] = [];
 
   if (userId) {
-    conditions.push({ OR: [{ status: "PUBLISHED" }, { status: "DRAFT", authorId: userId }] });
+    conditions.push({
+      OR: [{ status: "PUBLISHED" }, { status: "DRAFT", authorId: userId }],
+    });
   } else {
     conditions.push({ status: "PUBLISHED" });
   }
@@ -80,7 +98,9 @@ const getArticles = async (
     conditions.push({
       OR: [
         { title: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
-        { content: { contains: searchTerm, mode: Prisma.QueryMode.insensitive } },
+        {
+          content: { contains: searchTerm, mode: Prisma.QueryMode.insensitive },
+        },
       ],
     });
   }
@@ -106,7 +126,15 @@ const getArticles = async (
     prisma.articles.count({ where }),
   ]);
 
-  return { data: articles, pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } };
+  return {
+    data: articles,
+    pagination: {
+      page,
+      limit,
+      total: count,
+      totalPages: Math.ceil(count / limit),
+    },
+  };
 };
 
 const getArticleById = async (id: number, userId?: number) => {
@@ -134,10 +162,17 @@ const getArticleById = async (id: number, userId?: number) => {
     throw new NotFoundError("Article not found");
   }
 
-  return { ...article, tags: article.articleTags.map((at) => at.tag), articleTags: undefined };
+  return {
+    ...article,
+    tags: article.articleTags.map((at) => at.tag),
+    articleTags: undefined,
+  };
 };
 
-const canEditArticle = async (articleId: number, user: { id: number; role: Role }) => {
+const canEditArticle = async (
+  articleId: number,
+  user: { id: number; role: Role },
+) => {
   const article = await prisma.articles.findUnique({
     where: { id: articleId },
     select: { authorId: true, status: true },
@@ -156,10 +191,17 @@ const canEditArticle = async (articleId: number, user: { id: number; role: Role 
   throw new ForbiddenError("You do not have permission to edit this article");
 };
 
-const updateArticle = async (id: number, title?: string, content?: string, status?: ArticleStatus) => {
+const updateArticle = async (
+  id: number,
+  title?: string,
+  content?: string,
+  status?: ArticleStatus,
+) => {
   const data: Prisma.ArticlesUpdateInput = {
     ...(status !== undefined ? { status } : {}),
-    ...(title !== undefined ? { title, slug: await generateUniqueSlug(slugify(title), id) } : {}),
+    ...(title !== undefined
+      ? { title, slug: await generateUniqueSlug(slugify(title), id) }
+      : {}),
     ...(content !== undefined ? { content } : {}),
   };
 
@@ -179,7 +221,11 @@ const updateArticle = async (id: number, title?: string, content?: string, statu
     },
   });
 
-  return { ...updatedArticle, tags: updatedArticle.articleTags.map((at) => at.tag), articleTags: undefined };
+  return {
+    ...updatedArticle,
+    tags: updatedArticle.articleTags.map((at) => at.tag),
+    articleTags: undefined,
+  };
 };
 
 const deleteArticle = async (id: number) => {
@@ -189,4 +235,11 @@ const deleteArticle = async (id: number) => {
   });
 };
 
-export { createArticle, getArticles, getArticleById, updateArticle, canEditArticle, deleteArticle };
+export {
+  createArticle,
+  getArticles,
+  getArticleById,
+  updateArticle,
+  canEditArticle,
+  deleteArticle,
+};
