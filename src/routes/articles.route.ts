@@ -10,7 +10,7 @@ import {
   canEditArticle,
   deleteArticle,
 } from "../services/article.service.js";
-import { createComment } from "../services/comment.service.js";
+import { createComment, getCommentsForArticle } from "../services/comment.service.js";
 import { BadRequestError } from "../utils/errors.js";
 
 const router = Router();
@@ -38,6 +38,11 @@ const updateArticleSchema = z.object({
 const createCommentSchema = z.object({
   content: z.string().min(1).max(2000),
   parentId: z.coerce.number().int().positive().optional(),
+});
+
+const paginateCommentsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 router.post("/", authenticate, async (req: Request, res: Response, next: NextFunction) => {
@@ -157,5 +162,28 @@ router.post(
     }
   },
 );
+
+router.get("/:id/comments", async (req: Request, res: Response, next: NextFunction) => {
+  const articleId = parseInt(req.params.id as string, 10);
+  if (isNaN(articleId) || articleId <= 0) {
+    return next(new BadRequestError("Invalid article ID"));
+  }
+
+  const validation = paginateCommentsSchema.safeParse(req.query);
+
+  if (!validation.success) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  const { page, limit } = validation.data;
+
+  try {
+    await getArticleById(articleId);
+    const comments = await getCommentsForArticle(articleId, page, limit);
+    res.status(200).json(comments);
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

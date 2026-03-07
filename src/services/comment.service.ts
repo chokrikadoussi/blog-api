@@ -42,4 +42,50 @@ const createComment = async (
   });
 };
 
-export { createComment };
+const getCommentsForArticle = async (articleId: number, page: number, limit: number) => {
+  const [comments, count] = await Promise.all([
+    prisma.comments.findMany({
+      where: { articleId, parentId: null },
+      orderBy: { createdAt: "asc" },
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        id: true,
+        content: true,
+        author: { select: { id: true, email: true } },
+        createdAt: true,
+        replies: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            content: true,
+            author: { select: { id: true, email: true } },
+            createdAt: true,
+            replies: {
+              orderBy: { createdAt: "asc" },
+              select: {
+                id: true,
+                content: true,
+                author: { select: { id: true, email: true } },
+                createdAt: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.comments.count({ where: { articleId, parentId: null } }),
+  ]);
+
+  return {
+    data: comments,
+    pagination: {
+      page,
+      limit,
+      total: count,
+      totalPages: Math.ceil(count / limit),
+    },
+  };
+};
+
+export { createComment, getCommentsForArticle };
