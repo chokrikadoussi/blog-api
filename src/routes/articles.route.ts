@@ -12,6 +12,7 @@ import {
 } from "../services/article.service.js";
 import { createComment, getCommentsForArticle } from "../services/comment.service.js";
 import { BadRequestError } from "../utils/errors.js";
+import { toggleLikeArticle } from "../services/likes.service.js";
 
 const router = Router();
 
@@ -181,6 +182,21 @@ router.get("/:id/comments", async (req: Request, res: Response, next: NextFuncti
     await getArticleById(articleId);
     const comments = await getCommentsForArticle(articleId, page, limit);
     res.status(200).json(comments);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/:id/like", authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  const articleId = parseInt(req.params.id as string, 10);
+  if (isNaN(articleId) || articleId <= 0) {
+    return next(new BadRequestError("Invalid article ID"));
+  }
+
+  try {
+    await getArticleById(articleId);
+    const result = await toggleLikeArticle(articleId, req.user!.id);
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }
