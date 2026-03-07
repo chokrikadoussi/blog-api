@@ -24,9 +24,7 @@ const createComment = async (
     });
 
     if (!parentComment || parentComment.articleId !== articleId) {
-      throw new BadRequestError(
-        "Parent comment not found or does not belong to the same article",
-      );
+      throw new BadRequestError("Parent comment not found or does not belong to the same article");
     }
 
     data.parentId = parentId;

@@ -2,12 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../utils/errors.js";
 import { Prisma } from "../generated/prisma/client.js";
 
-const errorHandler = (
-  err: unknown,
-  _req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const errorHandler = (err: unknown, _req: Request, res: Response, next: NextFunction) => {
   if (res.headersSent) {
     return next(err);
   }
