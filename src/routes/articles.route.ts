@@ -13,6 +13,7 @@ import {
 import { createComment, getCommentsForArticle } from "../services/comment.service.js";
 import { BadRequestError } from "../utils/errors.js";
 import { toggleLikeArticle } from "../services/likes.service.js";
+import { addTagsToArticle, deleteTagFromArticle } from "../services/tag.service.js";
 
 const router = Router();
 
@@ -28,6 +29,7 @@ const paginateArticlesSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(10),
   author: z.coerce.number().int().positive().optional(),
   search: z.string().trim().optional(),
+  tag: z.string().trim().optional(),
 });
 
 const updateArticleSchema = z.object({
@@ -44,6 +46,10 @@ const createCommentSchema = z.object({
 const paginateCommentsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+const associateTagsSchema = z.object({
+  tags: z.array(z.string().min(2).max(50)).min(1),
 });
 
 router.post("/", authenticate, async (req: Request, res: Response, next: NextFunction) => {
@@ -70,11 +76,11 @@ router.get("/", authenticateOptional, async (req: Request, res: Response, next: 
     return res.status(400).json({ error: validation.error });
   }
 
-  const { page, limit, author, search } = validation.data;
+  const { page, limit, author, tag, search } = validation.data;
   const userId = req.user?.id;
 
   try {
-    const articles = await getArticles(page, limit, author, search, userId);
+    const articles = await getArticles(page, limit, author, search, tag, userId);
     res.status(200).json(articles);
   } catch (error) {
     next(error);
@@ -201,5 +207,52 @@ router.post("/:id/like", authenticate, async (req: Request, res: Response, next:
     next(error);
   }
 });
+
+router.post("/:id/tags", authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  const articleId = parseInt(req.params.id as string, 10);
+  if (isNaN(articleId) || articleId <= 0) {
+    return next(new BadRequestError("Invalid article ID"));
+  }
+
+  const validation = associateTagsSchema.safeParse(req.body);
+
+  if (!validation.success) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  const { tags } = validation.data;
+
+  try {
+    await canEditArticle(articleId, req.user!);
+    const updatedArticle = await addTagsToArticle(articleId, tags);
+    res.status(200).json(updatedArticle);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete(
+  "/:id/tags/:tagId",
+  authenticate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    const articleId = parseInt(req.params.id as string, 10);
+    if (isNaN(articleId) || articleId <= 0) {
+      return next(new BadRequestError("Invalid article ID"));
+    }
+
+    const tagId = parseInt(req.params.tagId as string, 10);
+    if (isNaN(tagId) || tagId <= 0) {
+      return next(new BadRequestError("Invalid tag ID"));
+    }
+
+    try {
+      await canEditArticle(articleId, req.user!);
+      await deleteTagFromArticle(articleId, tagId);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 export default router;
