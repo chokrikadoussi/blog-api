@@ -9,6 +9,8 @@ import helmet from "helmet";
 import { globalLimiter, authLimiter } from "./middlewares/rateLimiter.middleware.js";
 import cors from "cors";
 import { config } from "./config/index.js";
+import swaggerUi from "swagger-ui-express";
+import openApiSpec from "./docs/openapi.js";
 const app = express();
 
 app.use(express.json());
@@ -36,6 +38,7 @@ app.get("/health", async (_req, res) => {
   }
 });
 
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
 app.use("/auth", authLimiter, authRouter);
 app.use("/articles", articleRouter);
 app.use("/comments", commentsRouter);
