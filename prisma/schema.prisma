@@ -51,6 +51,10 @@ model Articles {
   comments   Comments[]
   articleTags ArticleTags[]
   likes Likes[]
+
+  @@index([authorId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Comments {
@@ -64,6 +68,9 @@ model Comments {
   parent   Comments? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comments[] @relation("CommentReplies")
   createdAt DateTime @default(now())
+
+  @@index([articleId])
+  @@index([parentId])
 }
 
 model Tags {
@@ -80,6 +87,7 @@ model ArticleTags {
   article   Articles @relation(fields: [articleId], references: [id])
   tag       Tags     @relation(fields: [tagId], references: [id])
   @@id([articleId, tagId])
+  @@index([tagId])
 }
 
 model Likes {
