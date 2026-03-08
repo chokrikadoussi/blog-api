@@ -27,6 +27,7 @@ jobs:
 
     env:
         DATABASE_URL: postgresql://postgres:postgres@localhost/blog_test
+        DATABASE_URL_TEST: postgresql://postgres:postgres@localhost/blog_test
         NODE_ENV: test
 
     services:
@@ -50,7 +51,7 @@ jobs:
       - name: Migrate database
         run: npx prisma migrate deploy
       - name: Run tests
-        run: npm test
+        run: npm run test:coverage
 
   build:
     runs-on: ubuntu-latest
