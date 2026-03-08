@@ -79,6 +79,7 @@ const getArticles = async (
   limit: number,
   author?: number,
   searchTerm?: string,
+  tag?: string,
   userId?: number | undefined,
 ) => {
   const conditions: Prisma.ArticlesWhereInput[] = [];
@@ -101,6 +102,15 @@ const getArticles = async (
       ],
     });
   }
+  if (tag) {
+    conditions.push({
+      articleTags: {
+        some: {
+          tag: { slug: tag },
+        },
+      },
+    });
+  }
 
   const where: Prisma.ArticlesWhereInput = { AND: conditions };
 
@@ -116,6 +126,7 @@ const getArticles = async (
         slug: true,
         status: true,
         author: { select: { id: true, email: true } },
+        articleTags: { select: { tag: { select: { name: true, slug: true } } } },
         createdAt: true,
         _count: { select: { comments: true, likes: true } },
       },
