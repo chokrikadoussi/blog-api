@@ -5,9 +5,22 @@ import articleRouter from "./routes/articles.route.js";
 import commentsRouter from "./routes/comments.route.js";
 import tagsRouter from "./routes/tags.route.js";
 import errorHandler from "./middlewares/error.middleware.js";
+import helmet from "helmet";
+import { globalLimiter, authLimiter } from "./middlewares/rateLimiter.middleware.js";
+import cors from "cors";
+import { config } from "./config/index.js";
 const app = express();
 
 app.use(express.json());
+app.use(helmet());
+app.use(globalLimiter);
+app.use(
+  cors({
+    origin: config.corsOrigin,
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
 app.get("/health", async (_req, res) => {
   try {
@@ -23,7 +36,7 @@ app.get("/health", async (_req, res) => {
   }
 });
 
-app.use("/auth", authRouter);
+app.use("/auth", authLimiter, authRouter);
 app.use("/articles", articleRouter);
 app.use("/comments", commentsRouter);
 app.use("/tags", tagsRouter);
