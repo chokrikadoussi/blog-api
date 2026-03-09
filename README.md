@@ -10,7 +10,7 @@ REST API complète pour une plateforme de blog — projet de portfolio démontra
 
 | | |
 |---|---|
-| **Staging (Railway)** | https://blog-api-production-9c57.up.railway.app |
+| **Production (Railway)** | https://blog-api-production-9c57.up.railway.app |
 | **Health check** | https://blog-api-production-9c57.up.railway.app/health |
 | **Swagger UI** | https://blog-api-production-9c57.up.railway.app/api-docs |
 
