@@ -4,11 +4,11 @@ import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
 import { ForbiddenError, UnauthorizedError } from "../utils/errors.js";
 
-const authenticate = (req: Request, res: Response, next: NextFunction) => {
+const authenticate = (req: Request, _res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    throw new UnauthorizedError("Invalid authorization header");
+    return next(new UnauthorizedError("Invalid authorization header"));
   }
 
   const token = authHeader.split(" ")[1] || "";
@@ -22,7 +22,7 @@ const authenticate = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const authenticateOptional = (req: Request, res: Response, next: NextFunction) => {
+const authenticateOptional = (req: Request, _res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -43,13 +43,13 @@ const authenticateOptional = (req: Request, res: Response, next: NextFunction) =
 };
 
 const authorize = (...roles: Role[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) {
-      throw new UnauthorizedError("User not authenticated");
+      return next(new UnauthorizedError("User not authenticated"));
     }
 
     if (!roles.includes(req.user.role)) {
-      throw new ForbiddenError("Forbidden");
+      return next(new ForbiddenError("Forbidden"));
     }
 
     next();
