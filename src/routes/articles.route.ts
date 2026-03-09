@@ -56,7 +56,9 @@ router.post("/", authenticate, async (req: Request, res: Response, next: NextFun
   const validation = createArticleSchema.safeParse(req.body);
 
   if (!validation.success) {
-    return res.status(400).json({ error: validation.error });
+    return res
+      .status(400)
+      .json({ error: "Validation failed", details: validation.error.issues.map((i) => i.message) });
   }
 
   try {
@@ -73,7 +75,9 @@ router.get("/", authenticateOptional, async (req: Request, res: Response, next: 
   const validation = paginateArticlesSchema.safeParse(req.query);
 
   if (!validation.success) {
-    return res.status(400).json({ error: validation.error });
+    return res
+      .status(400)
+      .json({ error: "Validation failed", details: validation.error.issues.map((i) => i.message) });
   }
 
   const { page, limit, author, tag, search } = validation.data;
@@ -115,7 +119,9 @@ router.patch("/:id", authenticate, async (req: Request, res: Response, next: Nex
   const validation = updateArticleSchema.safeParse(req.body);
 
   if (!validation.success) {
-    return res.status(400).json({ error: validation.error });
+    return res
+      .status(400)
+      .json({ error: "Validation failed", details: validation.error.issues.map((i) => i.message) });
   }
 
   const { title, content, status } = validation.data;
@@ -156,7 +162,10 @@ router.post(
     const validation = createCommentSchema.safeParse(req.body);
 
     if (!validation.success) {
-      return res.status(400).json({ error: validation.error });
+      return res.status(400).json({
+        error: "Validation failed",
+        details: validation.error.issues.map((i) => i.message),
+      });
     }
 
     const { content, parentId } = validation.data;
@@ -179,7 +188,9 @@ router.get("/:id/comments", async (req: Request, res: Response, next: NextFuncti
   const validation = paginateCommentsSchema.safeParse(req.query);
 
   if (!validation.success) {
-    return res.status(400).json({ error: validation.error });
+    return res
+      .status(400)
+      .json({ error: "Validation failed", details: validation.error.issues.map((i) => i.message) });
   }
 
   const { page, limit } = validation.data;
@@ -217,7 +228,9 @@ router.post("/:id/tags", authenticate, async (req: Request, res: Response, next:
   const validation = associateTagsSchema.safeParse(req.body);
 
   if (!validation.success) {
-    return res.status(400).json({ error: validation.error });
+    return res
+      .status(400)
+      .json({ error: "Validation failed", details: validation.error.issues.map((i) => i.message) });
   }
 
   const { tags } = validation.data;

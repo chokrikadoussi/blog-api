@@ -17,7 +17,10 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     const validation = createTagSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({ error: validation.error });
+      return res.status(400).json({
+        error: "Validation failed",
+        details: validation.error.issues.map((i) => i.message),
+      });
     }
 
     const { name } = validation.data;
@@ -39,7 +42,10 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
     .safeParse(req.query);
 
   if (!validation.success) {
-    return res.status(400).json({ error: validation.error });
+    return res.status(400).json({
+      error: "Validation failed",
+      details: validation.error.issues.map((i) => i.message),
+    });
   }
 
   const { tag } = validation.data;

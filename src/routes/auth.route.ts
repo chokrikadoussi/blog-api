@@ -14,7 +14,10 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
   const parseResult = registerSchema.safeParse(req.body);
 
   if (!parseResult.success) {
-    return res.status(400).json({ error: parseResult.error });
+    return res.status(400).json({
+      error: "Validation failed",
+      details: parseResult.error.issues.map((i) => i.message),
+    });
   }
 
   const { email, password } = parseResult.data;
@@ -32,7 +35,10 @@ router.post("/login", async (req: Request, res: Response, next: NextFunction) =>
   const parseResult = registerSchema.safeParse(req.body);
 
   if (!parseResult.success) {
-    return res.status(400).json({ error: parseResult.error });
+    return res.status(400).json({
+      error: "Validation failed",
+      details: parseResult.error.issues.map((i) => i.message),
+    });
   }
 
   const { email, password } = parseResult.data;
