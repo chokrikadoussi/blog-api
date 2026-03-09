@@ -32,6 +32,7 @@ app.get("/health", async (_req, res) => {
       version: "1.0.0",
       uptime: Math.round(process.uptime()),
       db: "connected",
+      env: process.env.NODE_ENV ?? "development",
     });
   } catch {
     res.status(503).json({ status: "error", db: "disconnected" });
